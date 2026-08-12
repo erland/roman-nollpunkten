@@ -11,6 +11,7 @@ from xml.etree import ElementTree as ET
 NS = {
     "opf": "http://www.idpf.org/2007/opf",
     "xhtml": "http://www.w3.org/1999/xhtml",
+    "epub": "http://www.idpf.org/2007/ops",
 }
 ET.register_namespace("", NS["opf"])
 
@@ -68,6 +69,173 @@ def clean_custom_title_page(epub_dir: Path) -> int:
             changed += 1
     return changed
 
+def find_title_page_hrefs(epub_dir: Path, opf_rel: Path) -> set[str]:
+    """Find XHTML files containing the custom title-page block.
+
+    Pandoc can change filenames between versions, so do not assume ch001.xhtml.
+    Return hrefs both with and without basename for compatibility with existing
+    cleanup code. This is only used for diagnostics/removal before the TOC is
+    rebuilt from actual chapter files.
+    """
+    opf_path = epub_dir / opf_rel
+    manifest_tree = ET.parse(opf_path)
+    manifest_root = manifest_tree.getroot()
+    manifest = manifest_root.find("opf:manifest", NS)
+    if manifest is None:
+        return set()
+
+    title_paths: set[Path] = set()
+    for xhtml in epub_dir.rglob("*.xhtml"):
+        try:
+            tree = ET.parse(xhtml)
+        except ET.ParseError:
+            continue
+        root = tree.getroot()
+        if root.find(".//xhtml:section[@class='title-page']", NS) is not None:
+            title_paths.add(xhtml.resolve())
+
+    hrefs: set[str] = set()
+    for item in manifest.findall("opf:item", NS):
+        media_type = item.attrib.get("media-type", "")
+        href = item.attrib.get("href", "")
+        if media_type != "application/xhtml+xml" or not href:
+            continue
+        item_path = (opf_path.parent / href).resolve()
+        if item_path in title_paths:
+            hrefs.add(href)
+            hrefs.add(Path(href).name)
+    return hrefs
+
+
+def discover_chapters(epub_dir: Path, opf_rel: Path) -> list[tuple[str, str]]:
+    """Return chapter hrefs and labels in spine order.
+
+    This deliberately ignores Pandoc's generated TOC and rebuilds it from the
+    actual XHTML chapter files. That avoids false positives when a chapter title
+    is identical to the book title, e.g. chapter 17 "Nollpunkten".
+    """
+    opf_path = epub_dir / opf_rel
+    tree = ET.parse(opf_path)
+    root = tree.getroot()
+    manifest = root.find("opf:manifest", NS)
+    spine = root.find("opf:spine", NS)
+    if manifest is None or spine is None:
+        raise RuntimeError("EPUB OPF saknar manifest eller spine.")
+
+    items_by_id = {
+        item.attrib.get("id"): item
+        for item in manifest.findall("opf:item", NS)
+        if item.attrib.get("id")
+    }
+
+    chapters: list[tuple[str, str]] = []
+    seen_numbers: set[int] = set()
+
+    for itemref in spine.findall("opf:itemref", NS):
+        item = items_by_id.get(itemref.attrib.get("idref", ""))
+        if item is None:
+            continue
+        href = item.attrib.get("href", "")
+        if item.attrib.get("media-type") != "application/xhtml+xml" or not href:
+            continue
+        if "nav" in item.attrib.get("properties", "").split():
+            continue
+
+        xhtml_path = opf_path.parent / href
+        if not xhtml_path.exists():
+            continue
+        try:
+            xhtml_tree = ET.parse(xhtml_path)
+        except ET.ParseError:
+            continue
+        xhtml_root = xhtml_tree.getroot()
+
+        if xhtml_root.find(".//xhtml:section[@class='title-page']", NS) is not None:
+            continue
+
+        h1 = xhtml_root.find(".//xhtml:h1", NS)
+        if h1 is None:
+            continue
+
+        number_span = h1.find("xhtml:span[@class='chapter-number']", NS)
+        title_span = h1.find("xhtml:span[@class='chapter-title']", NS)
+
+        number: int | None = None
+        title = ""
+        if number_span is not None and title_span is not None:
+            try:
+                number = int("".join(number_span.itertext()).strip())
+            except ValueError:
+                number = None
+            title = "".join(title_span.itertext()).strip()
+        else:
+            text = "".join(h1.itertext()).strip()
+            match = re.match(r"^(\d+)\.\s+(.+?)\s*$", text)
+            if match:
+                number = int(match.group(1))
+                title = match.group(2).strip()
+
+        if number is None or not title:
+            continue
+        if number in seen_numbers:
+            raise RuntimeError(f"Dubblett av kapitelnummer i EPUB: {number}")
+        seen_numbers.add(number)
+        chapters.append((href, f"{number}. {title}"))
+
+    chapters.sort(key=lambda item: int(item[1].split(".", 1)[0]))
+    return chapters
+
+
+def rebuild_nav_toc(epub_dir: Path, opf_rel: Path) -> int:
+    """Replace nav.xhtml's TOC with entries for the real chapters only."""
+    opf_path = epub_dir / opf_rel
+    tree = ET.parse(opf_path)
+    root = tree.getroot()
+    manifest = root.find("opf:manifest", NS)
+    if manifest is None:
+        raise RuntimeError("EPUB OPF saknar manifest.")
+
+    chapters = discover_chapters(epub_dir, opf_rel)
+    if not chapters:
+        raise RuntimeError("Hittade inga kapitelfiler att lägga i EPUB-TOC.")
+
+    rebuilt = 0
+    nav_items = [
+        item for item in manifest.findall("opf:item", NS)
+        if "nav" in item.attrib.get("properties", "").split()
+    ]
+    for nav_item in nav_items:
+        nav_path = opf_path.parent / nav_item.attrib["href"]
+        nav_tree = ET.parse(nav_path)
+        nav_root = nav_tree.getroot()
+        toc = nav_root.find(".//xhtml:nav[@epub:type='toc']", NS)
+        if toc is None:
+            # ElementTree's limited XPath can be fussy with epub:type after
+            # namespace reserialization, so fall back to explicit attribute checks.
+            for candidate in nav_root.findall(".//xhtml:nav", NS):
+                if candidate.attrib.get(f"{{{NS['epub']}}}type") == "toc":
+                    toc = candidate
+                    break
+        if toc is None:
+            raise RuntimeError("nav.xhtml saknar toc-nav.")
+
+        old_ol = toc.find("xhtml:ol", NS)
+        old_count = 0
+        if old_ol is not None:
+            old_count = len(old_ol.findall("xhtml:li", NS))
+            toc.remove(old_ol)
+
+        ol = ET.SubElement(toc, f"{{{NS['xhtml']}}}ol", {"class": "toc"})
+        for index, (href, label) in enumerate(chapters, start=1):
+            li = ET.SubElement(ol, f"{{{NS['xhtml']}}}li", {"id": f"toc-li-chapter-{index:02d}"})
+            a = ET.SubElement(li, f"{{{NS['xhtml']}}}a", {"href": href})
+            a.text = label
+
+        nav_tree.write(nav_path, encoding="utf-8", xml_declaration=True)
+        rebuilt += old_count
+    return rebuilt
+
+
 def clean_nav_and_spine(epub_dir: Path, opf_rel: Path) -> tuple[bool, int]:
     opf_path = epub_dir / opf_rel
     tree = ET.parse(opf_path)
@@ -90,28 +258,11 @@ def clean_nav_and_spine(epub_dir: Path, opf_rel: Path) -> tuple[bool, int]:
     if spine_changed:
         tree.write(opf_path, encoding="utf-8", xml_declaration=True)
 
-    removed = 0
-    for nav_item in nav_items:
-        nav_path = opf_path.parent / nav_item.attrib["href"]
-        nav_tree = ET.parse(nav_path)
-        nav_root = nav_tree.getroot()
-        parent_map = {child: parent for parent in nav_root.iter() for child in parent}
-        for anchor in list(nav_root.findall(".//xhtml:nav[@epub:type='toc']//xhtml:a", {
-            **NS,
-            "epub": "http://www.idpf.org/2007/ops",
-        })):
-            label = "".join(anchor.itertext()).strip()
-            href = anchor.attrib.get("href", "")
-            if label == "Glödhjärtats val" and re.search(r"ch001\.xhtml(?:#.*)?$", href):
-                li = parent_map.get(anchor)
-                if li is not None:
-                    ol = parent_map.get(li)
-                    if ol is not None:
-                        ol.remove(li)
-                        removed += 1
-        if removed:
-            nav_tree.write(nav_path, encoding="utf-8", xml_declaration=True)
-    return spine_changed, removed
+    # Rebuild rather than surgically removing entries. A surgical remove can
+    # accidentally remove chapter 17 because its title is the same as the book:
+    # "Nollpunkten".
+    rebuilt_entries = rebuild_nav_toc(epub_dir, opf_rel)
+    return spine_changed, rebuilt_entries
 
 def repack(epub_dir: Path, output: Path) -> None:
     if output.exists():
@@ -145,7 +296,7 @@ def main() -> int:
     print(
         f"Efterbearbetad EPUB: {headings} kapitelfiler, "
         f"{title_pages} titelsida, nav linear=no: {nav_changed}, "
-        f"borttagna titelsideposter i TOC: {nav_removed}"
+        f"ombyggda TOC-poster: {nav_removed}"
     )
     return 0
 

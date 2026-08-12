@@ -43,6 +43,10 @@ $endif$
 \clubpenalty=10000
 \displaywidowpenalty=10000
 \raggedbottom
+% Pandoc emits \tightlist for compact lists. The custom template must define it.
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
 
 \pagestyle{fancy}
 \fancyhf{}
