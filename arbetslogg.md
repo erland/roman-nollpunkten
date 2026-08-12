@@ -24,8 +24,8 @@
 | 2026-05-10 | Kapitel 16 godkänt/sparat | Kapitel 16 – Publiceringen sparat i `kapitel/kapitel-16.md` |
 | 2026-05-10 | Kapitel 17 godkänt/sparat | Kapitel 17 – Nollpunkten sparat i `kapitel/kapitel-17.md` |
 | 2026-05-10 | Kapitel 18 godkänt/sparat | Kapitel 18 – Efter sanningen sparat i `kapitel/kapitel-18.md`; första utkastet är komplett |
-
+| 2026-08-12 | GitHub Actions tillagda | Införde validate, preview-build och release-workflows samt scripts/ och publishing/ för EPUB/PDF. |
+| 2026-08-12 | GitHub Actions EPUB-fix | `fix-epub-after-pandoc.py` uppdaterat för att ta bort titelsidan ur TOC robust utan hårdkodad malltitel |
 ## Nästa rekommenderade steg
 
 - Gör helhetsrevision av första utkastet eller skapa export/EPUB om användaren vill.
-| 2026-08-12 | GitHub Actions tillagda | Införde validate, preview-build och release-workflows samt scripts/ och publishing/ för EPUB/PDF. |

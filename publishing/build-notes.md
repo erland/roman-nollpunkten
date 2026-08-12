@@ -27,3 +27,8 @@ Pandoc är låst till `3.1.11.1` i byggskriptet och i GitHub Actions.
 - Omslagsbild används inte.
 - Kapitel hämtas från `kapitel/kapitel-XX.md` i numerisk ordning.
 - Kapitelnoteringar efter `---` exporteras inte.
+
+
+## Fix 2026-08-12
+
+Preview-bygget stoppade eftersom titelsidan fortfarande fanns i EPUB:ens TOC efter Pandoc-bygget. `publishing/fix-epub-after-pandoc.py` är nu uppdaterad så den inte längre letar efter en hårdkodad titel från mallprojektet, utan identifierar XHTML-filen som innehåller `<section class="title-page">` och tar bort motsvarande TOC-post oavsett filnamn eller titel.

@@ -11,6 +11,7 @@ from xml.etree import ElementTree as ET
 NS = {
     "opf": "http://www.idpf.org/2007/opf",
     "xhtml": "http://www.w3.org/1999/xhtml",
+    "epub": "http://www.idpf.org/2007/ops",
 }
 ET.register_namespace("", NS["opf"])
 
@@ -68,6 +69,41 @@ def clean_custom_title_page(epub_dir: Path) -> int:
             changed += 1
     return changed
 
+def find_title_page_hrefs(epub_dir: Path, opf_rel: Path) -> set[str]:
+    """Find XHTML files containing the custom title-page block.
+
+    Pandoc can change filenames between versions, so do not assume ch001.xhtml.
+    Return hrefs relative to the nav file directory when possible.
+    """
+    opf_path = epub_dir / opf_rel
+    manifest_tree = ET.parse(opf_path)
+    manifest_root = manifest_tree.getroot()
+    manifest = manifest_root.find("opf:manifest", NS)
+    if manifest is None:
+        return set()
+
+    title_paths: set[Path] = set()
+    for xhtml in epub_dir.rglob("*.xhtml"):
+        try:
+            tree = ET.parse(xhtml)
+        except ET.ParseError:
+            continue
+        root = tree.getroot()
+        if root.find(".//xhtml:section[@class='title-page']", NS) is not None:
+            title_paths.add(xhtml.resolve())
+
+    hrefs: set[str] = set()
+    for item in manifest.findall("opf:item", NS):
+        media_type = item.attrib.get("media-type", "")
+        href = item.attrib.get("href", "")
+        if media_type != "application/xhtml+xml" or not href:
+            continue
+        item_path = (opf_path.parent / href).resolve()
+        if item_path in title_paths:
+            hrefs.add(href)
+            hrefs.add(Path(href).name)
+    return hrefs
+
 def clean_nav_and_spine(epub_dir: Path, opf_rel: Path) -> tuple[bool, int]:
     opf_path = epub_dir / opf_rel
     tree = ET.parse(opf_path)
@@ -90,27 +126,40 @@ def clean_nav_and_spine(epub_dir: Path, opf_rel: Path) -> tuple[bool, int]:
     if spine_changed:
         tree.write(opf_path, encoding="utf-8", xml_declaration=True)
 
+    title_page_hrefs = find_title_page_hrefs(epub_dir, opf_rel)
     removed = 0
+
     for nav_item in nav_items:
         nav_path = opf_path.parent / nav_item.attrib["href"]
         nav_tree = ET.parse(nav_path)
         nav_root = nav_tree.getroot()
         parent_map = {child: parent for parent in nav_root.iter() for child in parent}
-        for anchor in list(nav_root.findall(".//xhtml:nav[@epub:type='toc']//xhtml:a", {
-            **NS,
-            "epub": "http://www.idpf.org/2007/ops",
-        })):
-            label = "".join(anchor.itertext()).strip()
+        nav_removed = 0
+
+        for anchor in list(nav_root.findall(".//xhtml:nav[@epub:type='toc']//xhtml:a", NS)):
             href = anchor.attrib.get("href", "")
-            if label == "Glödhjärtats val" and re.search(r"ch001\.xhtml(?:#.*)?$", href):
-                li = parent_map.get(anchor)
-                if li is not None:
-                    ol = parent_map.get(li)
-                    if ol is not None:
-                        ol.remove(li)
-                        removed += 1
-        if removed:
+            href_without_fragment = href.split("#", 1)[0]
+            href_name = Path(href_without_fragment).name
+            is_title_page = (
+                href_without_fragment in title_page_hrefs
+                or href_name in title_page_hrefs
+            )
+            if not is_title_page:
+                continue
+
+            li = parent_map.get(anchor)
+            if li is None:
+                continue
+            ol = parent_map.get(li)
+            if ol is None:
+                continue
+            ol.remove(li)
+            removed += 1
+            nav_removed += 1
+
+        if nav_removed:
             nav_tree.write(nav_path, encoding="utf-8", xml_declaration=True)
+
     return spine_changed, removed
 
 def repack(epub_dir: Path, output: Path) -> None:
