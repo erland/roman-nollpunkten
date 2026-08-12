@@ -55,3 +55,18 @@
 |---|---|---|
 | exports/README.md | Exportinformation | OK |
 | exports/exportlogg.md | Exporthistorik | OK |
+
+
+## GitHub Actions och publicering
+
+| Fil | Syfte | Status |
+|---|---|---|
+| `.github/workflows/01-validate.yml` | Validerar projektet vid push/PR mot main | OK |
+| `.github/workflows/02-build-preview.yml` | Manuell preview som bygger EPUB och PDF | OK |
+| `.github/workflows/03-release.yml` | Skapar/uppdaterar GitHub Release vid v*-taggar | OK |
+| `scripts/validate_project.py` | Snabb projekt- och manusvalidering | OK |
+| `scripts/build_book.py` | Reproducerbart bygge av EPUB/PDF från kapitelfiler | OK |
+| `publishing/metadata.yaml` | Publiceringsmetadata för Nollpunkten | OK |
+| `publishing/epub.css` | EPUB-layout | OK |
+| `publishing/pdf-template.tex` | PDF-layout | OK |
+| `publishing/pdf-filter.lua` | Kapitelrubriker för PDF-bygge | OK |
