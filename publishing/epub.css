@@ -1,0 +1,108 @@
+@charset "UTF-8";
+
+/* EPUB-sättning för Nollpunkten. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0 5%;
+  padding: 0;
+  font-family: "Literata", "Charis SIL", "Noto Serif", Georgia, serif;
+  font-size: 1em;
+  line-height: 1.52;
+  text-align: left;
+  widows: 2;
+  orphans: 2;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+p {
+  margin: 0 0 0.55em 0;
+  text-indent: 0;
+}
+
+h1 + p,
+hr + p,
+.no-indent,
+.title-page p {
+  text-indent: 0;
+}
+
+h1 {
+  margin: 0.8em 0 0.35em;
+  padding: 0;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.15;
+  break-before: auto;
+  page-break-before: auto;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+h1 .chapter-number {
+  display: block;
+  margin: 0 0 0.08em;
+  font-size: 1.015em;
+  letter-spacing: 0.04em;
+}
+
+h1 .chapter-title {
+  display: block;
+  margin: 0 0 0.20em;
+  font-size: 0.91em;
+}
+
+.title-page {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.title-page .book-title {
+  margin: 0;
+  font-size: 2.1em;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.title-page .author {
+  margin: 2.2em 0 0;
+  font-size: 1.05em;
+}
+
+hr {
+  width: 18%;
+  margin: 1.6em auto;
+  border: 0;
+  border-top: 0.08em solid currentColor;
+  opacity: 0.55;
+}
+
+blockquote {
+  margin: 1em 1.2em;
+}
+
+em {
+  font-style: italic;
+}
+
+strong {
+  font-weight: 700;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Pandocs nav-index finns kvar för läsarens innehållsförteckning,
+   men visas inte som en vanlig sida i bokflödet. */
+nav#toc {
+  display: none;
+}

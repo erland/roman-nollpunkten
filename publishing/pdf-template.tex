@@ -1,0 +1,102 @@
+\documentclass[11pt,openany]{book}
+
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+$if(pdf-font-dir)$
+\setmainfont[
+  Path=$pdf-font-dir$/,
+  Extension=.otf,
+  UprightFont=texgyrepagella-regular,
+  BoldFont=texgyrepagella-bold,
+  ItalicFont=texgyrepagella-italic,
+  BoldItalicFont=texgyrepagella-bolditalic
+]{texgyrepagella}
+$else$
+\setmainfont{TeXGyrePagella}
+$endif$
+
+\usepackage[
+  paperwidth=140mm,
+  paperheight=216mm,
+  inner=18mm,
+  outer=16mm,
+  top=18mm,
+  bottom=20mm,
+  headsep=5mm,
+  footskip=9mm
+]{geometry}
+
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\usepackage{tocloft}
+\usepackage{ragged2e}
+
+\setstretch{1.28}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em plus 0.08em minus 0.04em}
+\setlength{\emergencystretch}{1.5em}
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+\raggedbottom
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+\renewcommand{\contentsname}{Innehåll}
+\setcounter{tocdepth}{0}
+\setlength{\cftbeforechapskip}{0.35em}
+\renewcommand{\cftchapfont}{\normalfont}
+\renewcommand{\cftchappagefont}{\normalfont}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+
+\newcommand{\bookchapter}[3]{%
+  \clearpage
+  \phantomsection
+  \addcontentsline{toc}{chapter}{#1.\ #2}%
+  \markboth{#1.\ #2}{#1.\ #2}%
+  \thispagestyle{plain}%
+  \vspace*{10mm}%
+  \begin{center}
+    {\fontsize{12.2}{14.0}\selectfont #1\par}
+    \vspace{1.5mm}
+    {\fontsize{11.0}{13.0}\selectfont #2\par}
+  \end{center}
+  \vspace{7mm}%
+}
+
+\begin{document}
+
+\thispagestyle{empty}
+\vspace*{0.26\textheight}
+\begin{center}
+{\fontsize{24}{28}\selectfont\bfseries $title$\par}
+$if(subtitle)$
+\vspace{0.6em}
+{\large $subtitle$\par}
+$endif$
+\vfill
+{\large $author$\par}
+\end{center}
+\clearpage
+
+\frontmatter
+\tableofcontents
+\clearpage
+\mainmatter
+\setcounter{page}{1}
+
+$body$
+
+\end{document}

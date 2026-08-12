@@ -28,3 +28,4 @@
 ## Nästa rekommenderade steg
 
 - Gör helhetsrevision av första utkastet eller skapa export/EPUB om användaren vill.
+| 2026-08-12 | GitHub Actions tillagda | Införde validate, preview-build och release-workflows samt scripts/ och publishing/ för EPUB/PDF. |

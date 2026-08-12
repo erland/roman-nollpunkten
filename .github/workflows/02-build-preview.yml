@@ -1,0 +1,54 @@
+name: Build Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate project
+        run: python3 scripts/validate_project.py .
+
+      - name: Install pinned Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: "3.1.11.1"
+
+      - name: Install XeLaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex texlive-latex-extra texlive-fonts-recommended fonts-texgyre
+          fc-cache -f
+
+      - name: Verify PDF font files
+        shell: bash
+        run: |
+          set -euo pipefail
+          font_file="$(find /usr/share/texmf /usr/share/fonts -type f -name 'texgyrepagella-regular.otf' -print -quit 2>/dev/null || true)"
+          if [[ -z "${font_file}" ]]; then
+            echo "texgyrepagella-regular.otf was not found after installing fonts-texgyre." >&2
+            exit 1
+          fi
+          echo "Found TeX Gyre Pagella: ${font_file}"
+
+      - name: Build EPUB and PDF
+        run: python3 scripts/build_book.py --output-dir "${RUNNER_TEMP}/book-dist"
+
+      - name: Upload preview package
+        uses: actions/upload-artifact@v7
+        with:
+          name: nollpunkten-preview
+          path: |
+            ${{ runner.temp }}/book-dist/*.epub
+            ${{ runner.temp }}/book-dist/*.pdf
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,43 @@
+name: Validate
+
+on:
+  pull_request:
+    paths:
+      - "kapitel/**"
+      - "publishing/**"
+      - "scripts/**"
+      - "README.md"
+      - "roman-bibel.md"
+      - "synopsis.md"
+      - "kapitelplan.md"
+      - "projektstatus.md"
+      - "project-index.md"
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "kapitel/**"
+      - "publishing/**"
+      - "scripts/**"
+      - "README.md"
+      - "roman-bibel.md"
+      - "synopsis.md"
+      - "kapitelplan.md"
+      - "projektstatus.md"
+      - "project-index.md"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate project
+        run: python3 scripts/validate_project.py .
