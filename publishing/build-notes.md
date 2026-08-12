@@ -32,3 +32,11 @@ Pandoc är låst till `3.1.11.1` i byggskriptet och i GitHub Actions.
 ## Fix 2026-08-12
 
 Preview-bygget stoppade eftersom titelsidan fortfarande fanns i EPUB:ens TOC efter Pandoc-bygget. `publishing/fix-epub-after-pandoc.py` är nu uppdaterad så den inte längre letar efter en hårdkodad titel från mallprojektet, utan identifierar XHTML-filen som innehåller `<section class="title-page">` och tar bort motsvarande TOC-post oavsett filnamn eller titel.
+
+## Fix 2 – robust TOC för titel som matchar kapitelrubrik
+
+Preview kunde fortfarande falla eftersom kapitel 17 heter **Nollpunkten**, samma som boktiteln. Efterbearbetningen bygger nu om EPUB-navens TOC från faktiska XHTML-kapitel i spine-ordning i stället för att försöka ta bort titelsidan kirurgiskt. Det gör att kapitel 1–18 alltid finns kvar och att titelsidan inte visas i innehållsförteckningen.
+
+## Fix 2b – PDF-template
+
+Den anpassade LaTeX-mallen definierar nu Pandocs `\tightlist`, vilket krävs när Pandoc genererar kompakta listor i PDF-flödet.

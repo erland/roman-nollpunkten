@@ -29,3 +29,5 @@
 ## Nästa rekommenderade steg
 
 - Gör helhetsrevision av första utkastet eller skapa export/EPUB om användaren vill.
+| 2026-08-12 | GitHub Actions fix 2 | EPUB-efterbearbetningen bygger nu om TOC från faktiska kapitel så kapitel 17 inte tas bort när titeln matchar boktiteln. |
+| 2026-08-12 | GitHub Actions fix 2b | PDF-mallen definierar nu Pandocs \\tightlist så preview-bygget kan skapa PDF. |
